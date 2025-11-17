@@ -36,22 +36,22 @@ MonoBehaviour:
   JumpCutTime: 0.027
   TimeTillJumpApex: 0.5
   ApexHold: 0.97
-  ApexHangTime: 0.02
+  ApexHangTime: 0.01
   JumpBufferTime: 0.05
   JmpCoyoteTime: 0.1
-  ResetJumpWallSlide: 1
+  ResetJumpWallSlide: 0
   WallSlideSpeed: 5
   WallSlideDecelerationSpeed: 4
   WallJumpDirection: {x: -15, y: 4}
   WallJumpPostBufferTime: 0.125
   WallJumpGravity: 3
   DashTime: 0.11
-  DashSeed: 40
+  DashSpeed: 25
   TimeBtwDashesOnGround: 0.225
   ResetDashOnWallSlide: 1
   DashSedAllowed: 2
   DashDiagonallyBias: 0.4
-  DashGravityOnRelseasMultiplier: 1
+  DashGravityOnRelseasMultiplier: 2
   DashTimeForUpwardsCancel: 0.027
   DebugShowIsGroundedBox: 0
   DebugShowHeadBumpBox: 1

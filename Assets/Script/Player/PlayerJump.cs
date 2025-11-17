@@ -4,10 +4,15 @@ using UnityEngine;
 public class PlayerJump : MonoBehaviour
 {
 
-    private PlayerMoveStats moveStats;
+    //직접 참조
+    private PlayerMoveStatsData moveStats;
+    private PlayerMovementManager playerMovementManager;
+    private PlayerColliderState PlayerState;
+    private PlayerMove playerMove;
+    private PlayerColliderCheck palyerStateCheck;
 
     [Header("플레이어 옵션 체크")]
-    public static bool isJumping;
+    public bool isJumping;
     public bool isFastFalling;
     public bool isFalling;
     public bool isPastApexThresHold;
@@ -16,7 +21,7 @@ public class PlayerJump : MonoBehaviour
     static public float VerticalVelocity { get; set; }//점프 속도값
     private float fastFallTime;
     private float fastFallReleaseSpeed;
-    public static int numberOfJumpsUsed;
+    public int numberOfJumpsUsed;
 
     //벽슬라이딩
     private bool isWallSliding;
@@ -24,15 +29,15 @@ public class PlayerJump : MonoBehaviour
 
     //벽점프
 
-    public static bool WallJumpMoveStats;
-    public static bool isWallJumping;
+    public bool WallJumpMoveStats;
+    public bool isWallJumping;
     [SerializeField] private float WallJumpTime;
     [SerializeField] private bool isWallJumpFastFalling;
     [SerializeField] private bool isWallJumpFalling;
     private float WallJumpFastaFallTime;
     private float WallJumpFastaFallReaseSpeed;
 
-    public static float wallJumpPostBufferTimer;
+    public float wallJumpPostBufferTimer;
     private float wallJumpApexPoint;
     private float timePastWallJumpApexThreshold;
     private bool isPastWallJumpApexThreHold;
@@ -52,11 +57,16 @@ public class PlayerJump : MonoBehaviour
 
     public void Start()
     {
-        moveStats = Player.instance.moveStats;
+        moveStats = PlayerMovementManager.instance.moveStats;
+        playerMovementManager = GetComponent<PlayerMovementManager>();
+        PlayerState = GetComponent<PlayerColliderState>();
+        palyerStateCheck = GetComponent<PlayerColliderCheck>();
+        playerMove = GetComponent<PlayerMove>();
     }
+
     void Update()
     {
-        CountTimers();
+        JumpCountTimers();
         JumpCheck();
         LandCheck();
         WallJumpCheck();
@@ -73,7 +83,7 @@ public class PlayerJump : MonoBehaviour
         WallJump();
 
         //****** 속도 적용함수
-        Player.instance.ApplyVelocity();
+        playerMovementManager.ApplyVelocity();
 
     }
     public void ResetJumpValues()
@@ -98,13 +108,13 @@ public class PlayerJump : MonoBehaviour
 
 
     }
-    private void CountTimers()
+    private void JumpCountTimers()
     {
 
         // 시간 체크
         jumpBufferTimer -= Time.deltaTime;
 
-        if (!Player.isGround)
+        if (!PlayerState.isGround)
         {
             coyoteTimer -= Time.deltaTime;
         }
@@ -121,24 +131,24 @@ public class PlayerJump : MonoBehaviour
 
     private void LandCheck()
     {
-        if ((isJumping || isFalling || isWallJumpFalling || isWallJumping || isWallSliderFalling || isWallSliding || PlayerMove.isDashFastFalling) && Player.isGround && VerticalVelocity <= 0f)
+        if ((isJumping || isFalling || isWallJumpFalling || isWallJumping || isWallSliderFalling || isWallSliding || PlayerMove.isDashFastFalling) && PlayerState.isGround && VerticalVelocity <= 0f)
         {
             ResetJumpValues();
             ResetWallJumpValues();
-            Player.instance.playermove.ResetDashes();
-            Player.instance.playermove.ResetDashValues();
+            playerMove.ResetDashes();
+            playerMove.ResetDashValues();
 
             numberOfJumpsUsed = 0;
 
             VerticalVelocity = Physics2D.gravity.y;
 
-            if (PlayerMove.isDashFastFalling && Player.isGround)
+            if (PlayerMove.isDashFastFalling && PlayerState.isGround)
             {
-                Player.instance.playermove.ResetDashValues();
+                playerMove.ResetDashValues();
                 return;
             }
 
-            Player.instance.playermove.ResetDashValues();
+            playerMove.ResetDashValues();
         }
     }
     private void JumpCheck()
@@ -155,7 +165,7 @@ public class PlayerJump : MonoBehaviour
                 return;
             }
             //!!!!! 예외 : 벽슬라이드 중이거나 벽을 터치중일때 또한 중복 점프 방지를 통한 예외처리 //
-            else if (isWallSliding || (Player.isTouchWall && !Player.isGround))
+            else if (isWallSliding || (PlayerState.isTouchWall && !PlayerState.isGround))
             {
                 return;
             }
@@ -196,7 +206,7 @@ public class PlayerJump : MonoBehaviour
 
         // 1. 낮은 점프 및 코요테 타임 점프
         // (점프 버퍼가 눌리기전에 누름 && 점프하기 전 && (땅 || 코요테 타임))
-        if (jumpBufferTimer > 0f && !isJumping && (Player.isGround || coyoteTimer > 0f))
+        if (jumpBufferTimer > 0f && !isJumping && (PlayerState.isGround || coyoteTimer > 0f))
         {
             InitiateJump(1);
 
@@ -208,7 +218,7 @@ public class PlayerJump : MonoBehaviour
         }
 
         //2. 일반 이단점프 , 하강일때의 이단 점프 사용
-        else if (jumpBufferTimer > 0f && (isJumping || isWallJumping || isWallSliderFalling || PlayerMove.isDashFastFalling || Player.isAirDashing ) && !Player.isTouchWall && numberOfJumpsUsed < moveStats.JumpsAllowed)
+        else if (jumpBufferTimer > 0f && (isJumping || isWallJumping || isWallSliderFalling || PlayerMove.isDashFastFalling || playerMove.isAirDashing ) && !PlayerState.isTouchWall && numberOfJumpsUsed < moveStats.JumpsAllowed)
         {
             isFastFalling = false;
             InitiateJump(1);//점프 차감
@@ -250,7 +260,7 @@ public class PlayerJump : MonoBehaviour
         {
 
             // 2.머리에 닿으면 바로 하강
-            if (Player.isBump)
+            if (PlayerState.isBump)
             {
                 isFastFalling = true;
             }
@@ -338,7 +348,7 @@ public class PlayerJump : MonoBehaviour
         //***** 점프없을때의 하강 *****//
 
         // 1. 점프 하지 않고 그냥 하강할때 실행 or 벽점프 후 실행
-        if (!Player.isGround && !isJumping && !isWallSliding && !isWallJumping && Player.isDashing && PlayerMove.isDashFastFalling)
+        if (!PlayerState.isGround && !isJumping && !isWallSliding && !isWallJumping && playerMove.isDashing && PlayerMove.isDashFastFalling)
         {
             if (!isFalling)
             {
@@ -357,18 +367,18 @@ public class PlayerJump : MonoBehaviour
         //***** 벽 체크 *****//
 
         // 1. 벽에 붙기위한 전제조건 확인
-        if (Player.isTouchWall && !Player.isGround && !Player.isDashing)
+        if (PlayerState.isTouchWall && !PlayerState.isGround && !playerMove.isDashing)
         {
             if (VerticalVelocity < 0f && !isWallSliding)
             {
 
                 ResetJumpValues();
                 ResetWallJumpValues();
-                Player.instance.playermove.ResetDashValues();
+                playerMove.ResetDashValues();
 
                 if (moveStats.ResetDashOnWallSlide)
                 {
-                    Player.instance.playermove.ResetDashes();
+                    playerMove.ResetDashes();
                 }
 
                 isWallSliding = true; // 슬라이딩 가능
@@ -382,7 +392,7 @@ public class PlayerJump : MonoBehaviour
             }
         }
         // 3. 벽타기를 하고 이제 떨어졌는지 확인(#!Player.isTouchWall 핵심)
-        else if (isWallSliding && !Player.isTouchWall && !Player.isGround && !isWallSliderFalling)
+        else if (isWallSliding && !PlayerState.isTouchWall && !PlayerState.isGround && !isWallSliderFalling)
         {
             isWallSliderFalling = true;
             //4. 점프 횟수 재 충전
@@ -418,7 +428,7 @@ public class PlayerJump : MonoBehaviour
     private bool ShouldApplyPostWallJumpBuffer()
     {
         // 벽에 붙어있으면서 벽슬라이드 가능상태여야함.
-        if (!Player.isGround && (Player.isTouchWall || isWallSliding))
+        if (!PlayerState.isGround && (PlayerState.isTouchWall || isWallSliding))
         {
             return true;
         }
@@ -438,7 +448,7 @@ public class PlayerJump : MonoBehaviour
         }
 
         // 2. 벽 점프키를 때었다면 정점인지 낮은 벽점프인지 확인하고 상태 할당.
-        if (InputManager.JumpWasReleased && !isWallSliding && !Player.isTouchWall && isWallJumping)
+        if (InputManager.JumpWasReleased && !isWallSliding && !PlayerState.isTouchWall && isWallJumping)
         {
             if (VerticalVelocity > 0f)
             {
@@ -485,7 +495,7 @@ public class PlayerJump : MonoBehaviour
 
         // 3. 추가로 벽에서의 점프값을 저장한후에는 자동으로 벽을 생성하여
         // 해당 위치에서 밀치도록 설계.
-        Player.instance.playermove.movevelocity = Player.instance.OutWallJump();
+        playerMove.movevelocity = palyerStateCheck.OutWallJump(moveStats);
     }
 
     private void WallJump()
@@ -505,7 +515,7 @@ public class PlayerJump : MonoBehaviour
             }
 
             // 2.머리 박으면 강제 하강
-            if (Player.isBump)
+            if (PlayerState.isBump)
             {
                 isWallJumpFastFalling = true;
                 WallJumpMoveStats = false;

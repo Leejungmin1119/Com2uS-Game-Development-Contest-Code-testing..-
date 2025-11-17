@@ -3,7 +3,7 @@ using UnityEditor.Callbacks;
 using UnityEngine;
 
 [CreateAssetMenu(menuName ="player MoveMent")]
-public class PlayerMoveStats : ScriptableObject
+public class PlayerMoveStatsData : ScriptableObject
 {
     [Header("걷기 스탯")]
     [Range(0.25f, 100f)] public float MaxWalkSpeed;
