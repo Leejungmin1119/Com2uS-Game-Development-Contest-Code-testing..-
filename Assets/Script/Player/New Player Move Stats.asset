@@ -12,22 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f37c9d167ec6b543bedce574adee797, type: 3}
   m_Name: New Player Move Stats
   m_EditorClassIdentifier: 
+  MoveThreshold: 0.25
   MaxWalkSpeed: 5
   GroundAcceleration: 7
   GroundDcceleration: 3.5
-  AirAcceleration: 7
-  AirDcceleration: 5.5
+  AirAcceleration: 5
+  AirDcceleration: 7.5
   WallJumpAcceleration: 5
   WallJumpDcceleration: 5
   MaxRunSpeed: 10
+  RayRange: 0.11
   GroundLayer:
     serializedVersion: 2
     m_Bits: 64
-  GroundDetectionRayLenght: 0.1
-  HeadDetectionRayLength: 0.02
-  HeadWidth: 0.75
-  WallDectectionRayLength: 0.125
-  WallDectectionRayHeight: 0.9
   JumpHeight: 4
   JumpHeightCompensationFactor: 1
   GravityOfFalling: 2
@@ -37,9 +34,9 @@ MonoBehaviour:
   TimeTillJumpApex: 0.5
   ApexHold: 0.97
   ApexHangTime: 0.01
-  JumpBufferTime: 0.05
+  JumpBufferTime: 0.125
   JmpCoyoteTime: 0.1
-  ResetJumpWallSlide: 0
+  ResetJumpWallSlide: 1
   WallSlideSpeed: 5
   WallSlideDecelerationSpeed: 4
   WallJumpDirection: {x: -15, y: 4}
@@ -53,8 +50,10 @@ MonoBehaviour:
   DashDiagonallyBias: 0.4
   DashGravityOnRelseasMultiplier: 2
   DashTimeForUpwardsCancel: 0.027
-  DebugShowIsGroundedBox: 0
-  DebugShowHeadBumpBox: 1
+  DebugShowIsGrounded: 1
+  DebugShowHeadRays: 1
+  DebugShowWallHit: 1
+  ExtraRayDebugDistance: 0.06
   ShowWalkJumpArc: 1
   ShowRunJumpArc: 0
   StopOnCollision: 1

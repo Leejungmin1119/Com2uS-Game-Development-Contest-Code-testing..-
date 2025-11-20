@@ -4,11 +4,18 @@ public class PlayerMove : MonoBehaviour
 {
 
     // 직접 참조 필드 선언
-    PlayerMovementManager movementmanager;
-    PlayerMoveStatsData moveStats;
-    PlayerColliderState playerState;
-    PlayerJump playerJump;
+    [SerializeField] PlayerMovementManager movementmanager;
+    [SerializeField] PlayerMoveStatsData moveStats;
+    [SerializeField] PlayerMoveController playerController;
+    [SerializeField] PlayerJump playerJump;
 
+
+    // 속도
+    public float HorizonVelocity;
+    //입력값
+    private Vector2 _MoveInput;
+    private bool _RunHeld;
+    private bool _DashPressed;
     //대쉬 상태 변수
     public bool isDashing;
     public bool isAirDashing;
@@ -20,88 +27,116 @@ public class PlayerMove : MonoBehaviour
     //대쉬 사용횟수
     private int numberofDashesUsed;
 
-    //방향?
+    //방향
     private Vector2 dashDirection;
-
+    public bool isFilp {get;private set;}
     //대쉬 하강 함수
     [SerializeField] static public bool isDashFastFalling;
     [SerializeField] private float dashFasatFallTime;
     [SerializeField] private float dashFasatFallReleaseSpeed;
-    public float movevelocity;
 
+
+    private SpriteRenderer Player_Sprite;
     void Start()
     {
         moveStats = PlayerMovementManager.instance.moveStats;
         movementmanager = GetComponent<PlayerMovementManager>();
-        playerState = GetComponent<PlayerColliderState>();
+        playerController = GetComponent<PlayerMoveController>();
         playerJump = GetComponent<PlayerJump>();
+
+        Player_Sprite = GetComponent<SpriteRenderer>();
     }
     void Update()
     {
+        //입력값 전달
+        _MoveInput = InputManager.Movement;
+        _RunHeld = InputManager.RunIsHeld;
+        if(InputManager.DashWasPressed) _DashPressed = true;
+
         DashCheck();
+
+        //player 의 input 값 리셋
+
     }
 
     // Update is called once per frame
     void FixedUpdate()
     {
+        //대쉬
+        Dash(Time.fixedDeltaTime);
 
-        Dash();
-
-        if(playerState.isGround)
+        if(playerController.isGrounded())
         {
             dashOnGroundTimer -= Time.deltaTime;
         }
 
-        if (playerState.isGround == true)
-        {
-            Move(moveStats.GroundAcceleration, moveStats.GroundDcceleration, InputManager.Movement);
-        }
-        else
-        {
-            if (playerJump.WallJumpMoveStats)
-            {
-                Move(moveStats.WallJumpAcceleration,moveStats.WallJumpDcceleration, InputManager.Movement);
-            }
-            else
-            {
-                Move(moveStats.AirAcceleration,moveStats.AirDcceleration, InputManager.Movement);
-            }
+        //이동
+        HandleHorizontalMovement(Time.fixedDeltaTime);
 
-        }
-
-        movementmanager.ApplyVelocity();
 
     }
 
-    private void Move(float acceleration, float dcceleration, Vector2 moveInput)
+    private void Turn(Vector2 moveInput)
+    {
+        //좌우 방향 전환(flip이용)
+        if (moveInput.x != 0)
+        {
+            if(moveInput.x >0)
+            {
+                isFilp = true;
+                Player_Sprite.flipX = false;
+            }
+            else if(moveInput.x < 0)
+            {
+                isFilp = false;
+                Player_Sprite.flipX = true;
+            }
+        }
+
+    }
+
+    private void HandleHorizontalMovement(float TimeStep)
     {
 
-
-        //***** 이동 구현 (심화) *****//
+        //***** 이동 구현 *****//
         // !! 기본적으로 키들은 InputManager를 통하여 키 입력값 저장(유지보수 차원, 가독성 증가)
+        // 추가적으로 입력값들을 실시간으로 전달받아서
         if(!isDashing)
         {
-            if (moveInput != Vector2.zero)
-            {
-                //1. 달리기 키와 기본키 를 구분후 다르게 속도값 저장
+            Turn(_MoveInput);//회전 체크
+            //속도 초기값
+            float targetVelocityX = 0f;
 
-                float targetvelocity = 0f;
-
-                if (InputManager.RunIsHeld)
-                {
-                    targetvelocity = moveInput.x * moveStats.MaxRunSpeed;
-                }
-                else
-                {
-                    targetvelocity = moveInput.x * moveStats.MaxWalkSpeed;
-                }
-                // 2. 저장한 속도를 바로 올리지 않고 가속값을 곱하여 적용
-                movevelocity = Mathf.Lerp(movevelocity, targetvelocity, acceleration * Time.fixedDeltaTime); // 부드럽게 이동을 적용하기 위해서 Lerp 활용
-            }
-            else if (moveInput == Vector2.zero)//3. 이동키 입력 x 일시 감속 적용
+            // 1. 최소 입력시간을 설정하여 입력 감지확인
+            if(Mathf.Abs(_MoveInput.x) >= moveStats.MoveThreshold) // 최소 입력시간 체크
             {
-                movevelocity = Mathf.Lerp(movevelocity, 0f, dcceleration * Time.fixedDeltaTime);
+                float moveDirection = Mathf.Sign(_MoveInput.x);
+                targetVelocityX = _RunHeld ? moveDirection * moveStats.MaxRunSpeed : moveDirection * moveStats.MaxWalkSpeed;
             }
+
+            // 2. 플레이어가 지금 땅인지 하늘인지에 따라서 가속,감속 적용
+            float acceleration = playerController.isGrounded() ? moveStats.GroundAcceleration : moveStats.AirAcceleration;
+            float dcceleration = playerController.isGrounded() ? moveStats.GroundDcceleration : moveStats.AirDcceleration;
+
+            // 벽점프 확인 후 맞으면 그에 맞는 가속도 적용
+            if(playerJump.WallJumpMoveStats)
+            {
+                acceleration = moveStats.WallJumpAcceleration;
+                dcceleration = moveStats.WallJumpDcceleration;
+            }
+
+            // 2. 속도 값 기록
+            if(Mathf.Abs(_MoveInput.x) >= moveStats.MoveThreshold)
+            {
+                HorizonVelocity = Mathf.Lerp(HorizonVelocity,targetVelocityX,acceleration * TimeStep);
+            }
+            else
+            {
+                HorizonVelocity = Mathf.Lerp(HorizonVelocity,targetVelocityX,dcceleration * TimeStep);
+            }
+
+            // 실제 플레이어 매니저에 속도값 조정
+
         }
 
     }
@@ -123,18 +158,18 @@ public class PlayerMove : MonoBehaviour
     {
 
         //***** 대쉬 체크 *****//
-
         // 1. 대쉬키를 눌렸는지 확인
-        if (InputManager.DashWasPressed)
+        if (_DashPressed)
         {
+
             //지상 대쉬
-            if (playerState.isGround && dashOnGroundTimer < 0 && !isDashing) // 대쉬를 사용하기 전인지도 체크
+            if (playerController.isGrounded() && dashOnGroundTimer < 0 && !isDashing) // 대쉬를 사용하기 전인지도 체크
             {
                 InitiateDash();
             }
 
             //공중 대쉬
-            else if (!playerState.isGround && !isDashing && numberofDashesUsed < moveStats.DashSedAllowed)
+            else if (!playerController.isGrounded() && !isDashing && numberofDashesUsed < moveStats.DashSedAllowed)
             {
                 isAirDashing = true;
                 InitiateDash();
@@ -150,6 +185,8 @@ public class PlayerMove : MonoBehaviour
                     }
                 }
             }
+
+            _DashPressed = false;
         }
     }
 
@@ -159,7 +196,7 @@ public class PlayerMove : MonoBehaviour
     private void InitiateDash()
     {
         //***** 대쉬 기록*****//
-        dashDirection = InputManager.Movement;// 플레이어가 누른 방향
+        dashDirection = _MoveInput;// 플레이어가 누른 방향
 
         Vector2 closestDirection = Vector2.zero;
 
@@ -177,7 +214,6 @@ public class PlayerMove : MonoBehaviour
                 closestDirection = dashDirection;
                 break;
             }
-
             //3. 만약 찾지 못했다면 가장 가까운 값을 찾고 대각선이면 보정치 주기
             float distance = Vector2.Distance(dashDirection, moveStats.DashDirections[i]);
 
@@ -200,7 +236,7 @@ public class PlayerMove : MonoBehaviour
         // 아무방향도 주지 않을때의 뱡향 값
         if (closestDirection == Vector2.zero)
         {
-            if (InputManager.Movement.x > 0)
+            if (!Player_Sprite.flipX)
             {
                 closestDirection = Vector2.right;
             }
@@ -215,25 +251,26 @@ public class PlayerMove : MonoBehaviour
         dashTimer = 0f;
         dashOnGroundTimer = moveStats.TimeBtwDashesOnGround;
 
+        //대쉬 외에 다른 상태값들은 초기화
         playerJump.ResetJumpValues();
         playerJump.ResetWallJumpValues();
-        playerJump.ResetWallSlide();
+        playerJump.StopWallSlide();
     }
 
     /// <summary>
     /// 이때까지의 플레이어의 상태를 통해서 실제 대쉬 방향 및 속도를 갱신하는 함수
     /// 마지막으로 갱신후 벡터값을 최종 apply함수에 전달.
     /// </summary>
-    private void Dash()
+    private void Dash(float timestep)
     {
         if (isDashing)
         {
 
             //1. 대쉬 실행 타이머가 초과하면(대쉬가 끝나면) 대쉬 상태값 초기화
-            dashTimer += Time.fixedDeltaTime;
+            dashTimer += timestep;
             if (dashTimer >= moveStats.DashTime)
             {
-                if (playerState.isGround)
+                if (playerController.isGrounded())
                 {
                     ResetDashes();
                 }
@@ -245,9 +282,9 @@ public class PlayerMove : MonoBehaviour
                 if (!playerJump.isJumping && !playerJump.isWallJumping)
                 {
                     dashFasatFallTime = 0f;
-                    dashFasatFallReleaseSpeed = PlayerJump.VerticalVelocity;
+                    dashFasatFallReleaseSpeed = playerJump.VerticalVelocity;
 
-                    if (!playerState.isGround)
+                    if (!playerController.isGrounded())
                     {
                         isDashFastFalling = true;
                     }
@@ -255,39 +292,43 @@ public class PlayerMove : MonoBehaviour
 
                 return;
             }
-            movevelocity = moveStats.DashSpeed * dashDirection.x;
+            HorizonVelocity = moveStats.DashSpeed * dashDirection.x;
 
+            //지금 대쉬가 실행되고 있을때 공중에 있다면 플레이어의 y축도 증가 하거나 고정(수평대쉬 ,공중기준)
             if (dashDirection.y != 0f || isAirDashing)
             {
-                PlayerJump.VerticalVelocity = moveStats.DashSpeed * dashDirection.y;
-
+                playerJump.VerticalVelocity = moveStats.DashSpeed * dashDirection.y;
+            }
+            else if(!playerJump.isJumping && dashDirection.y == 0f)
+            {
+                playerJump.VerticalVelocity = -0.001f;
             }
         }
 
         //3. 대쉬 하강상태면 지면까지 중력 적용
         else if(isDashFastFalling)
         {
-            if (PlayerJump.VerticalVelocity > 0f)
+            if (playerJump.VerticalVelocity > 0f)
             {
                 //DashTimeForUpwardsCancel되기전까지 속도 0으로 보간 조정
                 if (dashFasatFallTime < moveStats.DashTimeForUpwardsCancel)
                 {
-                    PlayerJump.VerticalVelocity = Mathf.Lerp(dashFasatFallReleaseSpeed, 0f, (dashFasatFallTime / moveStats.DashTimeForUpwardsCancel));
+                    playerJump.VerticalVelocity = Mathf.Lerp(dashFasatFallReleaseSpeed, 0f, (dashFasatFallTime / moveStats.DashTimeForUpwardsCancel));
                 }
-                //보간 이후 빠른 중력 적용
+                //보간 후 빠른 중력 적용
                 else if (dashFasatFallTime >= moveStats.DashTimeForUpwardsCancel)
                 {
-                    PlayerJump.VerticalVelocity += moveStats.Gravity * moveStats.DashGravityOnRelseasMultiplier * Time.fixedDeltaTime;
+                    playerJump.VerticalVelocity += moveStats.Gravity * moveStats.DashGravityOnRelseasMultiplier * timestep;
                 }
 
-                dashFasatFallTime += Time.fixedDeltaTime;
+                dashFasatFallTime += timestep;
             }
 
+            //속도가 0이하일때 빠른 중력 적용
             else
             {
-                PlayerJump.VerticalVelocity += moveStats.Gravity * moveStats.DashGravityOnRelseasMultiplier * Time.fixedDeltaTime;
+                playerJump.VerticalVelocity += moveStats.Gravity * moveStats.DashGravityOnRelseasMultiplier * timestep;
             }
         }
     }
-
 }

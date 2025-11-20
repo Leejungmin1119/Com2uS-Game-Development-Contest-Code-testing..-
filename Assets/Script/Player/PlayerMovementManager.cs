@@ -13,27 +13,29 @@ public class PlayerMovementManager : MonoBehaviour
     public PlayerJump playerJump;
     public PlayerMoveStatsData moveStats;
 
-    // 플레이어무브 기타 변수
-    public bool isFilp;
-    public GameObject Player_Object;
+    public PlayerMoveController playerController;
 
+    // 플레이어무브 기타 변수
+    private Vector2 Velocity;
+    //실제 적용시킬 플레이어 속도값
+
+    public GameObject Player_Object;
     private Animator Player_Animator;
-    public Rigidbody2D Player_rigidBody;
-    private SpriteRenderer Player_Sprite;
+
+
 
     void Start()
     {
         playermove = GetComponent<PlayerMove>();
         playerJump = GetComponent<PlayerJump>();
+        playerController = GetComponent<PlayerMoveController>();
     }
+
     void Awake()
     {
         //******참조
         Player_Object = this.gameObject;
         Player_Animator = GetComponent<Animator>();
-
-        Player_rigidBody = GetComponent<Rigidbody2D>();
-        Player_Sprite = GetComponent<SpriteRenderer>();
 
         if (instance == null)
         {
@@ -59,24 +61,10 @@ public class PlayerMovementManager : MonoBehaviour
 
     void FixedUpdate()
     {
-        Turn(InputManager.Movement);
-
-        //최종 속도 적용
+        //속도 종합
         ApplyVelocity();
-    }
-
-    public void Turn(Vector2 moveInput)
-    {
-        //좌우 방향 전환(flip이용)
-        if (moveInput.x != 0)
-        {
-            Player_Sprite.flipX = moveInput.x < 0;
-            isFilp = true;
-        }
-        else
-        {
-            isFilp = false;
-        }
+        // 플레이어에게 실제 속도 적용
+        playerController.Move(new Vector2(playermove.HorizonVelocity,playerJump.VerticalVelocity) * Time.fixedDeltaTime);
     }
 
     /// <summary>
@@ -86,14 +74,13 @@ public class PlayerMovementManager : MonoBehaviour
     {
         if (!playermove.isDashing)
         {
-            PlayerJump.VerticalVelocity = Mathf.Clamp(PlayerJump.VerticalVelocity, -moveStats.MaxFallSpeed, 50f);
+            playerJump.VerticalVelocity = Mathf.Clamp(playerJump.VerticalVelocity, -moveStats.MaxFallSpeed, 50f);
         }
         else
         {
-            PlayerJump.VerticalVelocity = Mathf.Clamp(PlayerJump.VerticalVelocity, -50f, 50f);
+            playerJump.VerticalVelocity = Mathf.Clamp(playerJump.VerticalVelocity, -50f, 50f);
         }
 
-        Player_rigidBody.linearVelocity = new Vector2(instance.playermove.movevelocity, PlayerJump.VerticalVelocity);
     }
 
 

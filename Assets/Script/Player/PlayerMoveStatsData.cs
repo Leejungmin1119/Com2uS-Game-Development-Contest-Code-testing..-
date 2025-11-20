@@ -6,6 +6,7 @@ using UnityEngine;
 public class PlayerMoveStatsData : ScriptableObject
 {
     [Header("걷기 스탯")]
+    [Range(0f,1f)] public float MoveThreshold = 0.25f;
     [Range(0.25f, 100f)] public float MaxWalkSpeed;
     [Range(0.25f, 50f)] public float GroundAcceleration;
     [Range(0.25f, 50f)] public float GroundDcceleration;
@@ -22,16 +23,9 @@ public class PlayerMoveStatsData : ScriptableObject
 
     [Header("오브젝트 체크 범위 관련 변수")]
 
+    [Range(0f,1f)] public float RayRange =0f;
     [Header("RayCast 길이")]
     public LayerMask GroundLayer;
-    public float GroundDetectionRayLenght = 0.02f;
-    public float HeadDetectionRayLength = 0.02f;
-    [Range(0f, 1f)] public float HeadWidth = 0.75f;
-
-    [Header("벽 RayCast ")]
-
-    public float WallDectectionRayLength = 0.125f;
-    [Range(0.01f, 1f)] public float WallDectectionRayHeight = 0.9f; // 탐지 길이
 
 
     [Header("점프")]
@@ -83,8 +77,10 @@ public class PlayerMoveStatsData : ScriptableObject
 
 
     [Header("Debug")]
-    public bool DebugShowIsGroundedBox;
-    public bool DebugShowHeadBumpBox;
+    public bool DebugShowIsGrounded;
+    public bool DebugShowHeadRays;
+    public bool DebugShowWallHit;
+    [Range(0f,1f)] public float ExtraRayDebugDistance = 0.25f;
 
     [Header("시각화 Tool")]
     public bool ShowWalkJumpArc = false;
@@ -94,6 +90,7 @@ public class PlayerMoveStatsData : ScriptableObject
     [Range(5, 100)] public int ArcResolution = 20;
     [Range(0, 500)] public int VisualizationSteps = 90;
 
+    // 대쉬 방향 확인
     public readonly Vector2[] DashDirections = new Vector2[]
     {
         new Vector2(0,0), // 없음
